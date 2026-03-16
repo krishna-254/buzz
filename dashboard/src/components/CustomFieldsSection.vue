@@ -4,7 +4,7 @@
 			{{ __(title) || __("Additional Information") }}
 		</h5>
 
-		<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
 			<CustomFieldInput
 				v-for="field in customFields"
 				:key="field.fieldname"
@@ -17,8 +17,8 @@
 </template>
 
 <script setup>
-import CustomFieldInput from "./CustomFieldInput.vue";
 import { getFieldDefaultValue } from "@/composables/useCustomFields";
+import CustomFieldInput from "./CustomFieldInput.vue";
 
 const props = defineProps({
 	customFields: {

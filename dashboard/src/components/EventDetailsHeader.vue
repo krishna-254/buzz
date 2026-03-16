@@ -9,7 +9,7 @@
 			<img
 				:src="eventDetails.banner_image"
 				:alt="eventDetails.title"
-				class="w-full h-full object-cover contrast-100 brightness-100"
+				class="w-full h-auto object-cover contrast-100 brightness-100"
 			/>
 		</div>
 
@@ -91,10 +91,10 @@
 </template>
 
 <script setup>
+import { dayjs, dayjsLocal } from "frappe-ui";
 import LucideCalendar from "~icons/lucide/calendar";
 import LucideClock from "~icons/lucide/clock";
 import LucideMapPin from "~icons/lucide/map-pin";
-import { dayjsLocal, dayjs } from "frappe-ui";
 
 const props = defineProps({
 	eventDetails: {

@@ -7,7 +7,16 @@ from frappe import _
 from frappe.auth import LoginAttemptTracker
 from frappe.rate_limiter import rate_limit
 from frappe.translate import get_all_translations
-from frappe.utils import days_diff, format_date, format_time, today, validate_email_address
+from frappe.utils import (
+	days_diff,
+	format_date,
+	format_time,
+	get_datetime,
+	get_datetime_in_timezone,
+	get_system_timezone,
+	today,
+	validate_email_address,
+)
 
 from buzz.payments import get_payment_gateways_for_event, get_payment_link_for_booking
 from buzz.utils import is_app_installed
@@ -126,6 +135,17 @@ def get_event_payment_gateways(event: str) -> list[str]:
 	return get_payment_gateways_for_event(event)
 
 
+def are_registrations_closed(event_doc) -> bool:
+	"""Check if registrations are closed based on the event's registrations_close_at datetime."""
+	if not event_doc.registrations_close_at:
+		return False
+
+	event_tz = event_doc.time_zone or get_system_timezone()
+	now_in_event_tz = get_datetime_in_timezone(event_tz).replace(tzinfo=None)
+
+	return now_in_event_tz > get_datetime(event_doc.registrations_close_at)
+
+
 def is_ticket_transfer_allowed(event_id: str | int) -> bool:
 	"""Check if ticket transfer is allowed based on event start date and settings."""
 	try:
@@ -237,6 +257,9 @@ def get_event_booking_data(event_route: str) -> dict:
 
 	if not event_doc.is_published:
 		frappe.throw(_("Event not found"), frappe.DoesNotExistError)
+
+	# Check if registrations are closed
+	data.registrations_closed = are_registrations_closed(event_doc)
 
 	is_guest = frappe.session.user == "Guest"
 	if is_guest:
@@ -374,6 +397,9 @@ def process_booking(
 	if not event_doc.is_published:
 		frappe.throw(_("Event is not live"))
 
+	if are_registrations_closed(event_doc):
+		frappe.throw(_("Registrations for this event are closed"))
+
 	is_guest = frappe.session.user == "Guest"
 
 	if is_guest:
@@ -398,7 +424,9 @@ def process_booking(
 				frappe.throw(_("Phone number is required"))
 			verify_guest_otp("phone", guest_phone.strip(), otp)
 
-		full_name = (guest_full_name or "").strip() or (attendees[0].get("full_name") or "").strip()
+		first_name = (attendees[0].get("first_name") or "").strip()
+		last_name = (attendees[0].get("last_name") or "").strip()
+		full_name = (guest_full_name or "").strip() or f"{first_name} {last_name}".strip()
 		if not full_name:
 			frappe.throw(_("Full name is required for guest booking"))
 		booking_user = get_or_create_guest_user(guest_email, full_name)
@@ -443,18 +471,36 @@ def process_booking(
 						"fieldtype": field_def["fieldtype"],
 					},
 				)
+	# Validate last name is provided for webinar events (required for Zoom registration)
+	if event_doc.category == "Webinars":
+		for attendee in attendees:
+			if not (attendee.get("last_name") or "").strip():
+				frappe.throw(_("Last name is required for all attendees in webinar events"))
+
 	for attendee in attendees:
+		first_name = (attendee.get("first_name") or "").strip()
+		last_name = (attendee.get("last_name") or "").strip()
+
+		# Backward compat: split full_name into first/last if first_name not provided
+		if not first_name and attendee.get("full_name"):
+			name_parts = attendee["full_name"].strip().split(" ", 1)
+			first_name = name_parts[0]
+			last_name = last_name or (name_parts[1] if len(name_parts) > 1 else "")
+
+		attendee_full_name = f"{first_name} {last_name}".strip()
+
 		add_ons = attendee.get("add_ons", None)
 		if add_ons:
 			add_ons = create_add_on_doc(
-				attendee_name=attendee["full_name"],
+				attendee_name=attendee_full_name,
 				add_ons=add_ons,
 			)
 
 		# Process custom fields for this attendee
 		custom_fields = attendee.get("custom_fields", {})
 		attendee_row = {
-			"full_name": attendee.get("full_name"),
+			"first_name": first_name,
+			"last_name": last_name,
 			"email": attendee.get("email"),
 			"ticket_type": attendee.get("ticket_type"),
 			"add_ons": add_ons.name if add_ons else None,
@@ -530,7 +576,7 @@ def create_add_on_doc(attendee_name: str, add_ons: list[dict]):
 
 
 @frappe.whitelist()
-def transfer_ticket(ticket_id: str, new_name: str, new_email: str):
+def transfer_ticket(ticket_id: str, new_first_name: str, new_last_name: str, new_email: str):
 	"""Transfer a ticket to a new attendee."""
 	# Validate ticket exists
 	if not frappe.db.exists("Event Ticket", ticket_id):
@@ -552,8 +598,10 @@ def transfer_ticket(ticket_id: str, new_name: str, new_email: str):
 	# Store old attendee info for notification
 	old_name = ticket.attendee_name
 	old_email = ticket.attendee_email
+	new_name = f"{new_first_name} {new_last_name}".strip()
 
-	ticket.attendee_name = new_name
+	ticket.first_name = new_first_name
+	ticket.last_name = new_last_name
 	ticket.attendee_email = new_email
 	ticket.save(ignore_permissions=True)
 
