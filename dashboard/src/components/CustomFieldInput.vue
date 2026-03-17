@@ -128,17 +128,18 @@
 			<span v-if="field.mandatory" class="text-ink-red-4">*</span>
 		</label>
 		<div v-if="modelValue" class="flex items-center gap-2">
-			<a :href="modelValue" target="_blank" class="text-sm text-ink-blue-3 underline truncate max-w-xs">
+			<a
+				:href="modelValue"
+				target="_blank"
+				class="text-sm text-ink-blue-3 underline truncate max-w-xs"
+			>
 				{{ modelValue.split("/").pop() }}
 			</a>
 			<Button variant="ghost" size="sm" @click="$emit('update:modelValue', '')">
 				{{ __("Remove") }}
 			</Button>
 		</div>
-		<FileUploader
-			v-else
-			@success="(file) => $emit('update:modelValue', file.file_url)"
-		>
+		<FileUploader v-else @success="(file) => $emit('update:modelValue', file.file_url)">
 			<template #default="{ openFileSelector }">
 				<Button variant="outline" @click="openFileSelector">
 					{{ __("Upload File") }}
@@ -160,7 +161,7 @@
 </template>
 
 <script setup>
-import PhoneInput from "@/components/PhoneInput.vue"
+import PhoneInput from "@/components/PhoneInput.vue";
 import {
 	getFieldOptions,
 	getFieldPlaceholder,
@@ -168,7 +169,7 @@ import {
 	isDateField,
 	isDateTimeField,
 	isTextareaField,
-} from "@/composables/useCustomFields"
+} from "@/composables/useCustomFields";
 import {
 	Button,
 	DatePicker,
@@ -176,9 +177,9 @@ import {
 	FileUploader,
 	MultiSelect,
 	Textarea,
-} from "frappe-ui"
-import { computed, ref } from "vue"
-import LucideStar from "~icons/lucide/star"
+} from "frappe-ui";
+import { computed, ref } from "vue";
+import LucideStar from "~icons/lucide/star";
 
 const props = defineProps({
 	field: {
@@ -204,42 +205,36 @@ const multiSelectProxy = computed({
 			model.value = values.join(",");
 		}
 	},
-})
+});
 
 const linkFieldOptions = computed(() => {
-	if (!props.field.link_options) return []
+	if (!props.field.link_options) return [];
 	return props.field.link_options.map((name) => ({
 		label: name,
 		value: name,
-	}))
-})
+	}));
+});
 
-const hoveredRating = ref(0)
+const hoveredRating = ref(0);
 const ratingValue = computed(() => {
-	const val = Number(model.value) || 0
-	return Math.round(val * 5)
-})
+	const val = Number(model.value) || 0;
+	return Math.round(val * 5);
+});
 
 function starClasses(index) {
 	if (index <= hoveredRating.value && index > ratingValue.value) {
-		return "fill-yellow-200 text-yellow-200"
+		return "fill-yellow-200 text-yellow-200";
 	}
 	if (index <= ratingValue.value) {
-		return "fill-yellow-500 text-yellow-500"
+		return "fill-yellow-500 text-yellow-500";
 	}
-	return "fill-gray-400 text-gray-50"
+	return "fill-gray-400 text-gray-50";
 }
 
 function validateImageFile(file) {
-	const validTypes = [
-		"image/jpeg",
-		"image/png",
-		"image/gif",
-		"image/webp",
-		"image/svg+xml",
-	]
+	const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
 	if (!validTypes.includes(file.type)) {
-		return __("Please upload a valid image file (JPEG, PNG, GIF, WebP, SVG)")
+		return __("Please upload a valid image file (JPEG, PNG, GIF, WebP, SVG)");
 	}
 }
 </script>

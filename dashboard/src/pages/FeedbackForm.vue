@@ -9,9 +9,9 @@
 </template>
 
 <script setup>
-import BaseCustomEventForm from "@/components/BaseCustomEventForm.vue"
+import BaseCustomEventForm from "@/components/BaseCustomEventForm.vue";
 
 defineProps({
 	eventRoute: { type: String, required: true },
-})
+});
 </script>

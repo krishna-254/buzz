@@ -6,8 +6,8 @@ import frappe
 import pyotp
 from frappe import _
 from frappe.auth import LoginAttemptTracker
-from frappe.rate_limiter import rate_limit
 from frappe.geo.country_info import get_all as get_all_countries
+from frappe.rate_limiter import rate_limit
 from frappe.translate import get_all_translations
 from frappe.utils import (
 	days_diff,
@@ -32,8 +32,15 @@ CUSTOM_FORM_CONFIG = {
 		"applied_to": "Event Feedback",
 		"enabled_field": "accept_event_feedback",
 		"exclude_fields": {
-			"name", "owner", "creation", "modified", "modified_by",
-			"docstatus", "idx", "additional_fields", "event",
+			"name",
+			"owner",
+			"creation",
+			"modified",
+			"modified_by",
+			"docstatus",
+			"idx",
+			"additional_fields",
+			"event",
 			"section_break_additional",
 		},
 		"auto_set": {"event": "from_route"},
@@ -44,9 +51,18 @@ CUSTOM_FORM_CONFIG = {
 		"applied_to": "Talk Proposal",
 		"enabled_field": "accept_talk_proposals",
 		"exclude_fields": {
-			"name", "owner", "creation", "modified", "modified_by",
-			"docstatus", "idx", "submitted_by", "status",
-			"additional_fields", "event", "section_break_additional",
+			"name",
+			"owner",
+			"creation",
+			"modified",
+			"modified_by",
+			"docstatus",
+			"idx",
+			"submitted_by",
+			"status",
+			"additional_fields",
+			"event",
+			"section_break_additional",
 		},
 		"auto_set": {"event": "from_route", "submitted_by": "session_user"},
 		"deadline_field": "talk_proposals_close_at",
@@ -56,8 +72,16 @@ CUSTOM_FORM_CONFIG = {
 		"applied_to": "Sponsorship Enquiry",
 		"enabled_field": "accept_sponsorship_enquiries",
 		"exclude_fields": {
-			"name", "owner", "creation", "modified", "modified_by",
-			"docstatus", "idx", "status", "additional_fields", "event",
+			"name",
+			"owner",
+			"creation",
+			"modified",
+			"modified_by",
+			"docstatus",
+			"idx",
+			"status",
+			"additional_fields",
+			"event",
 			"section_break_additional",
 		},
 		"auto_set": {"event": "from_route"},
@@ -1445,8 +1469,6 @@ def register_campaign_interest(campaign: str):
 	lead.insert(ignore_permissions=True)
 
 
-
-
 @frappe.whitelist(allow_guest=True)
 def get_dial_codes() -> list:
 	return _get_dial_codes()
@@ -1465,7 +1487,6 @@ def _get_dial_codes() -> list:
 			codes.append({"country": country, "code": code, "dial_code": isd})
 			seen.add(isd)
 	return codes
-
 
 
 def get_form_fields(doctype: str, exclude_fields: set) -> list:
@@ -1505,13 +1526,15 @@ def get_form_fields(doctype: str, exclude_fields: set) -> list:
 					continue
 				if child_df.hidden:
 					continue
-				child_fields.append({
-					"fieldname": child_df.fieldname,
-					"fieldtype": child_df.fieldtype,
-					"label": child_df.label or child_df.fieldname,
-					"options": child_df.options,
-					"reqd": child_df.reqd,
-				})
+				child_fields.append(
+					{
+						"fieldname": child_df.fieldname,
+						"fieldtype": child_df.fieldtype,
+						"label": child_df.label or child_df.fieldname,
+						"options": child_df.options,
+						"reqd": child_df.reqd,
+					}
+				)
 			field_data["child_fields"] = child_fields
 		fields.append(field_data)
 	return fields
@@ -1563,7 +1586,16 @@ def get_custom_form_data(event_route: str, form_type: str) -> dict:
 			"applied_to": config["applied_to"],
 			"enabled": 1,
 		},
-		fields=["label", "fieldname", "fieldtype", "options", "mandatory", "placeholder", "default_value", "order"],
+		fields=[
+			"label",
+			"fieldname",
+			"fieldtype",
+			"options",
+			"mandatory",
+			"placeholder",
+			"default_value",
+			"order",
+		],
 		order_by="order asc",
 	)
 
@@ -1594,7 +1626,9 @@ def get_custom_form_data(event_route: str, form_type: str) -> dict:
 
 
 @frappe.whitelist(allow_guest=True)
-def submit_custom_form(event_route: str, form_type: str, data: dict | str, custom_fields_data: dict | str | None = None) -> None:
+def submit_custom_form(
+	event_route: str, form_type: str, data: dict | str, custom_fields_data: dict | str | None = None
+) -> None:
 	validate_custom_form(event_route, form_type)
 
 	config = CUSTOM_FORM_CONFIG[form_type]
@@ -1648,11 +1682,14 @@ def submit_custom_form(event_route: str, form_type: str, data: dict | str, custo
 		for fieldname, value in custom_fields_data.items():
 			if fieldname in allowed_custom and value not in (None, ""):
 				cf = allowed_custom[fieldname]
-				doc.append("additional_fields", {
-					"label": cf["label"],
-					"fieldname": fieldname,
-					"fieldtype": cf["fieldtype"],
-					"value": str(value),
-				})
+				doc.append(
+					"additional_fields",
+					{
+						"label": cf["label"],
+						"fieldname": fieldname,
+						"fieldtype": cf["fieldtype"],
+						"value": str(value),
+					},
+				)
 
 	doc.insert(ignore_permissions=True)

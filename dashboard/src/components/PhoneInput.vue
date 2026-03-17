@@ -25,91 +25,91 @@
 </template>
 
 <script setup>
-import { Combobox, TextInput, createResource } from "frappe-ui"
-import { computed, ref, watch } from "vue"
+import { Combobox, TextInput, createResource } from "frappe-ui";
+import { computed, ref, watch } from "vue";
 
 const props = defineProps({
 	modelValue: { type: String, default: "" },
 	label: { type: String, default: "Phone" },
 	placeholder: { type: String, default: "" },
 	required: { type: Boolean, default: false },
-})
+});
 
-const emit = defineEmits(["update:modelValue"])
+const emit = defineEmits(["update:modelValue"]);
 
-const dialCode = ref("+91")
-const localNumber = ref("")
-const dialCodesData = ref([])
+const dialCode = ref("+91");
+const localNumber = ref("");
+const dialCodesData = ref([]);
 
 function getFlagEmoji(countryCode) {
-	if (!countryCode) return ""
+	if (!countryCode) return "";
 	const codePoints = countryCode
 		.toUpperCase()
 		.split("")
-		.map((char) => 127397 + char.charCodeAt())
-	return String.fromCodePoint(...codePoints)
+		.map((char) => 127397 + char.charCodeAt());
+	return String.fromCodePoint(...codePoints);
 }
 
 const shortDisplay = computed(() => {
-	const entry = dialCodesData.value.find((d) => d.dial_code === dialCode.value)
-	if (entry) return `${getFlagEmoji(entry.code)} ${entry.dial_code}`
-	return dialCode.value
-})
+	const entry = dialCodesData.value.find((d) => d.dial_code === dialCode.value);
+	if (entry) return `${getFlagEmoji(entry.code)} ${entry.dial_code}`;
+	return dialCode.value;
+});
 
 const dialCodeOptions = computed(() =>
 	dialCodesData.value.map((d) => ({
 		label: `${getFlagEmoji(d.code)} ${d.dial_code}`,
 		value: d.dial_code,
-	})),
-)
+	}))
+);
 
 function parsePhone(value) {
 	if (!value) {
-		localNumber.value = ""
-		return
+		localNumber.value = "";
+		return;
 	}
-	const match = value.match(/^(\+\d{1,4})[\s-]?(.*)$/)
+	const match = value.match(/^(\+\d{1,4})[\s-]?(.*)$/);
 	if (match) {
-		dialCode.value = match[1]
-		localNumber.value = match[2]
+		dialCode.value = match[1];
+		localNumber.value = match[2];
 	} else {
-		localNumber.value = value
+		localNumber.value = value;
 	}
 }
 
-parsePhone(props.modelValue)
+parsePhone(props.modelValue);
 
 watch(
 	() => props.modelValue,
-	(val) => parsePhone(val),
-)
+	(val) => parsePhone(val)
+);
 
 function emitValue() {
 	if (!localNumber.value) {
-		emit("update:modelValue", "")
-		return
+		emit("update:modelValue", "");
+		return;
 	}
-	emit("update:modelValue", `${dialCode.value} ${localNumber.value}`)
+	emit("update:modelValue", `${dialCode.value} ${localNumber.value}`);
 }
 
 function onDialCodeChange(code) {
 	if (code) {
-		dialCode.value = code
-		emitValue()
+		dialCode.value = code;
+		emitValue();
 	}
 }
 
 function onNumberInput(num) {
-	const digitsOnly = String(num).replace(/\D/g, "")
-	localNumber.value = digitsOnly
-	emitValue()
+	const digitsOnly = String(num).replace(/\D/g, "");
+	localNumber.value = digitsOnly;
+	emitValue();
 }
 
 createResource({
 	url: "buzz.api.get_dial_codes",
 	auto: true,
 	onSuccess: (data) => {
-		dialCodesData.value = data
+		dialCodesData.value = data;
 	},
-})
+});
 </script>
