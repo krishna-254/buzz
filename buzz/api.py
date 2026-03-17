@@ -1469,7 +1469,7 @@ def register_campaign_interest(campaign: str):
 	lead.insert(ignore_permissions=True)
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist(allow_guest=True)  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
 def get_dial_codes() -> list:
 	return _get_dial_codes()
 
@@ -1558,7 +1558,7 @@ def validate_custom_form(event_route: str, form_type: str) -> None:
 		frappe.throw(_("This form is not available for this event"), frappe.DoesNotExistError)
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist(allow_guest=True)  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
 def get_custom_form_data(event_route: str, form_type: str) -> dict:
 	validate_custom_form(event_route, form_type)
 
@@ -1625,7 +1625,7 @@ def get_custom_form_data(event_route: str, form_type: str) -> dict:
 	}
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist(allow_guest=True)  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
 def submit_custom_form(
 	event_route: str, form_type: str, data: dict | str, custom_fields_data: dict | str | None = None
 ) -> None:
