@@ -14,6 +14,7 @@
   "default_value",
   "column_break_fpgn",
   "applied_to",
+  "custom_form_doctype",
   "offline_payment_method",
   "fieldtype",
   "options",
@@ -93,7 +94,15 @@
    "fieldname": "applied_to",
    "fieldtype": "Select",
    "label": "Applied To",
-   "options": "Booking\nTicket\nOffline Payment Form\nEvent Feedback\nTalk Proposal\nSponsorship Enquiry"
+   "options": "Booking\nTicket\nOffline Payment Form\nCustom Form"
+  },
+  {
+   "depends_on": "eval:doc.applied_to === 'Custom Form'",
+   "fieldname": "custom_form_doctype",
+   "fieldtype": "Link",
+   "label": "Custom Form DocType",
+   "mandatory_depends_on": "eval:doc.applied_to === 'Custom Form'",
+   "options": "DocType"
   },
   {
    "depends_on": "eval:doc.applied_to === 'Offline Payment Form'",

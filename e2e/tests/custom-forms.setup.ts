@@ -53,10 +53,11 @@ setup("setup custom forms on test event", async ({ request }) => {
 	}
 
 	await updateDoc(request, "Buzz Event", eventName, {
-		accept_event_feedback: 1,
-		accept_talk_proposals: 1,
-		accept_sponsorship_enquiries: 1,
-		talk_proposals_close_at: null,
+		custom_forms: [
+			{ form_doctype: "Event Feedback", route: "feedback", publish: 1 },
+			{ form_doctype: "Talk Proposal", route: "propose-talk", publish: 1 },
+			{ form_doctype: "Sponsorship Enquiry", route: "enquire-sponsorship", publish: 1 },
+		],
 	});
 
 	console.log(`Custom forms enabled on event: ${eventName}`);

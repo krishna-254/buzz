@@ -19,6 +19,7 @@ class BuzzEvent(Document):
 	if TYPE_CHECKING:
 		from frappe.types import DF
 
+		from buzz.events.doctype.buzz_event_form.buzz_event_form import BuzzEventForm
 		from buzz.events.doctype.event_featured_speaker.event_featured_speaker import EventFeaturedSpeaker
 		from buzz.events.doctype.event_payment_gateway.event_payment_gateway import EventPaymentGateway
 		from buzz.events.doctype.schedule_item.schedule_item import ScheduleItem
@@ -34,6 +35,7 @@ class BuzzEvent(Document):
 		banner_image: DF.AttachImage | None
 		card_image: DF.AttachImage | None
 		category: DF.Link
+		custom_forms: DF.Table[BuzzEventForm]
 		default_ticket_type: DF.Link | None
 		end_date: DF.Date | None
 		end_time: DF.Time
@@ -59,10 +61,8 @@ class BuzzEvent(Document):
 		sponsor_deck_cc: DF.SmallText | None
 		sponsor_deck_email_template: DF.Link | None
 		sponsor_deck_reply_to: DF.Data | None
-		sponsorship_proposals_close_at: DF.Datetime | None
 		start_date: DF.Date
 		start_time: DF.Time
-		talk_proposals_close_at: DF.Datetime | None
 		tax_inclusive: DF.Check
 		tax_label: DF.Data | None
 		tax_percentage: DF.Percent
@@ -164,6 +164,15 @@ class BuzzEvent(Document):
 		]
 		for record in records:
 			frappe.get_doc({**record, "event": self.name}).insert(ignore_permissions=True)
+
+		default_forms = [
+			{"form_doctype": "Event Feedback", "route": "feedback"},
+			{"form_doctype": "Talk Proposal", "route": "propose-talk"},
+			{"form_doctype": "Sponsorship Enquiry", "route": "enquire-sponsorship"},
+		]
+		for form in default_forms:
+			self.append("custom_forms", form)
+		self.save(ignore_permissions=True)
 
 	@frappe.whitelist()
 	@only_if_app_installed("zoom_integration", raise_exception=True)

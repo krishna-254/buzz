@@ -8,7 +8,7 @@
 			<div class="bg-surface-green-1 border border-outline-green-1 rounded-lg p-8">
 				<LucideCheckCircle class="w-16 h-16 text-ink-green-2 mx-auto mb-4" />
 				<h2 class="text-ink-green-3 font-semibold text-xl mb-2">
-					{{ successTitle }}
+					{{ __("Thank you!") }}
 				</h2>
 				<div
 					v-if="renderedSuccessMessage"
@@ -16,7 +16,7 @@
 					v-html="renderedSuccessMessage"
 				></div>
 				<p v-else class="text-ink-green-2">
-					{{ successMessage }}
+					{{ __("Your submission has been received.") }}
 				</p>
 			</div>
 		</div>
@@ -41,7 +41,7 @@
 				@submit.prevent="handleSubmit"
 			>
 				<h1 class="text-ink-gray-9 font-bold text-2xl mb-6">
-					{{ title }}
+					{{ formData.form_title }}
 				</h1>
 
 				<div class="space-y-4">
@@ -164,21 +164,9 @@ const props = defineProps({
 		type: String,
 		required: true,
 	},
-	formType: {
+	formRoute: {
 		type: String,
 		required: true,
-	},
-	title: {
-		type: String,
-		required: true,
-	},
-	successTitle: {
-		type: String,
-		default: () => __("Thank you!"),
-	},
-	successMessage: {
-		type: String,
-		default: () => __("Your submission has been received."),
 	},
 });
 
@@ -262,7 +250,7 @@ const formDataResource = createResource({
 	url: "buzz.api.get_custom_form_data",
 	params: {
 		event_route: props.eventRoute,
-		form_type: props.formType,
+		form_route: props.formRoute,
 	},
 	auto: true,
 	onSuccess: (data) => {
@@ -316,7 +304,7 @@ function handleSubmit() {
 
 	submitResource.submit({
 		event_route: props.eventRoute,
-		form_type: props.formType,
+		form_route: props.formRoute,
 		data,
 		custom_fields_data: customFieldValues.value,
 	});

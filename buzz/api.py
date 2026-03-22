@@ -20,6 +20,7 @@ from frappe.utils import (
 	today,
 	validate_email_address,
 )
+from frappe.utils.data import cstr
 
 from buzz.payments import get_payment_gateways_for_event, get_payment_link_for_booking
 from buzz.utils import is_app_installed
@@ -27,67 +28,19 @@ from buzz.utils import is_app_installed
 OFFLINE_PAYMENT_METHOD = "Offline"
 LAYOUT_FIELDTYPES = {"Section Break", "Column Break", "Tab Break"}
 
-CUSTOM_FORM_CONFIG = {
-	"Event Feedback": {
-		"applied_to": "Event Feedback",
-		"enabled_field": "accept_event_feedback",
-		"exclude_fields": {
-			"name",
-			"owner",
-			"creation",
-			"modified",
-			"modified_by",
-			"docstatus",
-			"idx",
-			"additional_fields",
-			"event",
-			"section_break_additional",
-		},
-		"auto_set": {"event": "from_route"},
-		"deadline_field": None,
-		"success_message_field": "feedback_success_message",
-	},
-	"Talk Proposal": {
-		"applied_to": "Talk Proposal",
-		"enabled_field": "accept_talk_proposals",
-		"exclude_fields": {
-			"name",
-			"owner",
-			"creation",
-			"modified",
-			"modified_by",
-			"docstatus",
-			"idx",
-			"submitted_by",
-			"status",
-			"additional_fields",
-			"event",
-			"section_break_additional",
-		},
-		"auto_set": {"event": "from_route", "submitted_by": "session_user"},
-		"deadline_field": "talk_proposals_close_at",
-		"success_message_field": "proposal_success_message",
-	},
-	"Sponsorship Enquiry": {
-		"applied_to": "Sponsorship Enquiry",
-		"enabled_field": "accept_sponsorship_enquiries",
-		"exclude_fields": {
-			"name",
-			"owner",
-			"creation",
-			"modified",
-			"modified_by",
-			"docstatus",
-			"idx",
-			"status",
-			"additional_fields",
-			"event",
-			"section_break_additional",
-		},
-		"auto_set": {"event": "from_route"},
-		"deadline_field": "sponsorship_proposals_close_at",
-		"success_message_field": "sponsorship_success_message",
-	},
+STANDARD_EXCLUDE_FIELDS = {
+	"name",
+	"owner",
+	"creation",
+	"modified",
+	"modified_by",
+	"docstatus",
+	"idx",
+	"additional_fields",
+	"event",
+	"section_break_additional",
+	"submitted_by",
+	"status",
 }
 
 
@@ -1501,13 +1454,22 @@ def get_form_fields(doctype: str, exclude_fields: set) -> list:
 			continue
 		if df.read_only:
 			continue
+		default_value = df.default
+		if default_value:
+			if default_value == "Today":
+				default_value = today()
+			elif default_value == "Now":
+				default_value = cstr(now_datetime())
+			elif default_value.startswith("eval:") or default_value.startswith("%"):
+				default_value = None
+
 		field_data = {
 			"fieldname": df.fieldname,
 			"fieldtype": df.fieldtype,
 			"label": df.label or df.fieldname,
 			"options": df.options,
 			"reqd": df.reqd,
-			"default": df.default,
+			"default": default_value,
 			"description": df.description,
 		}
 		if df.fieldtype == "Link" and df.options:
@@ -1540,12 +1502,7 @@ def get_form_fields(doctype: str, exclude_fields: set) -> list:
 	return fields
 
 
-def validate_custom_form(event_route: str, form_type: str) -> None:
-	if form_type not in CUSTOM_FORM_CONFIG:
-		frappe.throw(_("Invalid form type"), frappe.ValidationError)
-
-	config = CUSTOM_FORM_CONFIG[form_type]
-
+def validate_custom_form(event_route: str, form_route: str):
 	event_name = frappe.db.get_value("Buzz Event", {"route": event_route}, "name")
 	if not event_name:
 		frappe.throw(_("Event not found"), frappe.DoesNotExistError)
@@ -1554,57 +1511,72 @@ def validate_custom_form(event_route: str, form_type: str) -> None:
 	if not event_doc.is_published:
 		frappe.throw(_("Event not found"), frappe.DoesNotExistError)
 
-	if not event_doc.get(config["enabled_field"]):
+	form_row = None
+	for row in event_doc.custom_forms:
+		if row.route == form_route and row.publish:
+			form_row = row
+			break
+
+	if not form_row:
 		frappe.throw(_("This form is not available for this event"), frappe.DoesNotExistError)
+
+	return event_doc, form_row
+
+
+def get_auto_set_fields(form_doctype: str):
+	meta = frappe.get_meta(form_doctype)
+	auto_set = {}
+	for df in meta.fields:
+		if df.fieldname == "event" and df.fieldtype == "Link":
+			auto_set["event"] = "from_route"
+		elif df.fieldname == "submitted_by" and df.fieldtype == "Link":
+			auto_set["submitted_by"] = "session_user"
+	return auto_set
 
 
 @frappe.whitelist(allow_guest=True)  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
-def get_custom_form_data(event_route: str, form_type: str) -> dict:
-	validate_custom_form(event_route, form_type)
-
-	config = CUSTOM_FORM_CONFIG[form_type]
-	event_doc = frappe.get_cached_doc(
-		"Buzz Event",
-		frappe.db.get_value("Buzz Event", {"route": event_route}, "name"),
-	)
+def get_custom_form_data(event_route: str, form_route: str) -> dict:
+	event_doc, form_row = validate_custom_form(event_route, form_route)
+	form_doctype = form_row.form_doctype
 
 	closed = False
 	closed_message = ""
-	deadline_field = config["deadline_field"]
-	if deadline_field:
-		deadline = event_doc.get(deadline_field)
-		if deadline and get_datetime(deadline) < now_datetime():
-			closed = True
-			closed_message = _("Submissions for this form have closed.")
+	if form_row.auto_close_at and get_datetime(form_row.auto_close_at) < now_datetime():
+		closed = True
+		closed_message = _("Submissions for this form have closed.")
 
-	form_fields = get_form_fields(form_type, config["exclude_fields"])
+	auto_set = get_auto_set_fields(form_doctype)
+	exclude_fields = STANDARD_EXCLUDE_FIELDS | set(auto_set.keys())
+	form_fields = get_form_fields(form_doctype, exclude_fields)
 
-	custom_fields = frappe.get_all(
-		"Buzz Custom Field",
-		filters={
-			"event": event_doc.name,
-			"applied_to": config["applied_to"],
-			"enabled": 1,
-		},
-		fields=[
-			"label",
-			"fieldname",
-			"fieldtype",
-			"options",
-			"mandatory",
-			"placeholder",
-			"default_value",
-			"order",
-		],
-		order_by="order asc",
-	)
-
-	success_message_field = config["success_message_field"]
-	success_message = event_doc.get(success_message_field) or ""
+	form_doctype_meta = frappe.get_meta(form_doctype)
+	custom_fields = []
+	if form_doctype_meta.has_field("additional_fields"):
+		custom_fields = frappe.get_all(
+			"Buzz Custom Field",
+			filters={
+				"event": event_doc.name,
+				"applied_to": "Custom Form",
+				"custom_form_doctype": form_doctype,
+				"enabled": 1,
+			},
+			fields=[
+				"label",
+				"fieldname",
+				"fieldtype",
+				"options",
+				"mandatory",
+				"placeholder",
+				"default_value",
+				"order",
+			],
+			order_by="order asc",
+		)
 
 	return {
 		"form_fields": form_fields,
 		"custom_fields": custom_fields,
+		"form_title": form_doctype_meta.name,
 		"event": {
 			"name": event_doc.name,
 			"title": event_doc.title,
@@ -1621,58 +1593,54 @@ def get_custom_form_data(event_route: str, form_type: str) -> dict:
 		},
 		"closed": closed,
 		"closed_message": closed_message,
-		"success_message": success_message,
+		"success_message": form_row.success_message or "",
 	}
 
 
 @frappe.whitelist(allow_guest=True)  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
 def submit_custom_form(
-	event_route: str, form_type: str, data: dict | str, custom_fields_data: dict | str | None = None
+	event_route: str, form_route: str, data: dict | str, custom_fields_data: dict | str | None = None
 ) -> None:
-	validate_custom_form(event_route, form_type)
+	event_doc, form_row = validate_custom_form(event_route, form_route)
+	form_doctype = form_row.form_doctype
 
-	config = CUSTOM_FORM_CONFIG[form_type]
-	event_doc = frappe.get_cached_doc(
-		"Buzz Event",
-		frappe.db.get_value("Buzz Event", {"route": event_route}, "name"),
-	)
-
-	deadline_field = config["deadline_field"]
-	if deadline_field:
-		deadline = event_doc.get(deadline_field)
-		if deadline and get_datetime(deadline) < now_datetime():
-			frappe.throw(_("Submissions for this form have closed."))
+	if form_row.auto_close_at and get_datetime(form_row.auto_close_at) < now_datetime():
+		frappe.throw(_("Submissions for this form have closed."))
 
 	data = frappe.parse_json(data) or {}
 	custom_fields_data = frappe.parse_json(custom_fields_data) or {}
 
-	doc_data = {"doctype": form_type}
+	auto_set = get_auto_set_fields(form_doctype)
+	exclude_fields = STANDARD_EXCLUDE_FIELDS | set(auto_set.keys())
 
-	for field, source in config["auto_set"].items():
+	doc_data = {"doctype": form_doctype}
+
+	for field, source in auto_set.items():
 		if source == "from_route":
 			doc_data[field] = event_doc.name
 		elif source == "session_user":
 			doc_data[field] = frappe.session.user
 
-	allowed_fieldnames = {f["fieldname"] for f in get_form_fields(form_type, config["exclude_fields"])}
+	allowed_fieldnames = {f["fieldname"] for f in get_form_fields(form_doctype, exclude_fields)}
 	for fieldname, value in data.items():
 		if fieldname in allowed_fieldnames:
 			doc_data[fieldname] = value
 
-	meta = frappe.get_meta(form_type)
+	meta = frappe.get_meta(form_doctype)
 	for df in meta.fields:
-		if df.fieldtype == "Table" and df.fieldname not in config["exclude_fields"]:
+		if df.fieldtype == "Table" and df.fieldname not in exclude_fields:
 			if df.fieldname in data and isinstance(data[df.fieldname], list):
 				doc_data[df.fieldname] = data[df.fieldname]
 
 	doc = frappe.get_doc(doc_data)
 
-	if custom_fields_data:
+	if custom_fields_data and meta.has_field("additional_fields"):
 		custom_field_definitions = frappe.get_all(
 			"Buzz Custom Field",
 			filters={
 				"event": event_doc.name,
-				"applied_to": config["applied_to"],
+				"applied_to": "Custom Form",
+				"custom_form_doctype": form_doctype,
 				"enabled": 1,
 			},
 			fields=["fieldname", "label", "fieldtype"],
@@ -1693,3 +1661,28 @@ def submit_custom_form(
 				)
 
 	doc.insert(ignore_permissions=True)
+
+
+@frappe.whitelist(allow_guest=True)  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
+def get_event_forms(event_route: str) -> list:
+	event_name = frappe.db.get_value("Buzz Event", {"route": event_route}, "name")
+	if not event_name:
+		frappe.throw(_("Event not found"), frappe.DoesNotExistError)
+
+	event_doc = frappe.get_cached_doc("Buzz Event", event_name)
+
+	if not event_doc.is_published:
+		frappe.throw(_("Event not found"), frappe.DoesNotExistError)
+
+	forms = []
+	for row in event_doc.custom_forms:
+		if row.publish:
+			forms.append(
+				{
+					"route": row.route,
+					"doctype": row.form_doctype,
+					"label": frappe.get_meta(row.form_doctype).name,
+				}
+			)
+
+	return forms
