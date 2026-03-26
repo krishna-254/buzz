@@ -13,6 +13,12 @@
   "allow_add_ons_change_before_event_start_days",
   "column_break_hagy",
   "allow_ticket_cancellation_request_before_event_start_days",
+  "proposals_tab",
+  "event_proposals_section",
+  "accept_event_proposals",
+  "allow_guest_event_proposals",
+  "event_proposal_success_title",
+  "event_proposal_success_message",
   "communications_tab",
   "ticketing_emails_section",
   "default_ticket_email_template",
@@ -72,6 +78,41 @@
    "fieldtype": "Data",
    "label": "Support Email",
    "options": "Email"
+  },
+  {
+   "fieldname": "proposals_tab",
+   "fieldtype": "Tab Break",
+   "label": "Proposals"
+  },
+  {
+   "fieldname": "event_proposals_section",
+   "fieldtype": "Section Break",
+   "label": "Event Proposals"
+  },
+  {
+   "default": "0",
+   "fieldname": "accept_event_proposals",
+   "fieldtype": "Check",
+   "label": "Accept Event Proposals"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.accept_event_proposals",
+   "fieldname": "allow_guest_event_proposals",
+   "fieldtype": "Check",
+   "label": "Allow Guest Submission"
+  },
+  {
+   "depends_on": "eval:doc.accept_event_proposals",
+   "fieldname": "event_proposal_success_title",
+   "fieldtype": "Data",
+   "label": "Success Title"
+  },
+  {
+   "depends_on": "eval:doc.accept_event_proposals",
+   "fieldname": "event_proposal_success_message",
+   "fieldtype": "Markdown Editor",
+   "label": "Success Message"
   },
   {
    "fieldname": "communications_tab",
