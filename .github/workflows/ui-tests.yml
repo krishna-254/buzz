@@ -111,6 +111,22 @@ jobs:
           bench --site buzz.test set-config allow_tests true
           bench --site buzz.test set-config host_name "http://buzz.test:8000"
 
+      - name: Create Test User
+        working-directory: /home/runner/frappe-bench
+        run: |
+          bench --site buzz.test execute "
+          import frappe
+          frappe.get_doc({
+            'doctype': 'User',
+            'email': 'testuser@buzz.test',
+            'first_name': 'Test',
+            'send_welcome_email': 0,
+            'new_password': 'Test@123',
+            'roles': [{'role': 'System Manager'}]
+          }).insert(ignore_permissions=True)
+          frappe.db.commit()
+          "
+
       - name: Start Frappe Server
         working-directory: /home/runner/frappe-bench
         run: |
@@ -135,8 +151,8 @@ jobs:
         run: npx playwright test
         env:
           BASE_URL: http://buzz.test:8000
-          FRAPPE_USER: Administrator
-          FRAPPE_PASSWORD: admin
+          FRAPPE_USER: testuser@buzz.test
+          FRAPPE_PASSWORD: Test@123
 
       - name: Upload Playwright Report
         uses: actions/upload-artifact@v4

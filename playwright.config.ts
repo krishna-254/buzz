@@ -51,8 +51,17 @@ export default defineConfig({
 			dependencies: ["setup"],
 		},
 		{
+			name: "login-modal",
+			testMatch: /login-modal\.spec\.ts/,
+			use: {
+				...devices["Desktop Chrome"],
+				storageState: { cookies: [], origins: [] },
+			},
+			dependencies: ["setup"],
+		},
+		{
 			name: "chromium",
-			testIgnore: /guest-booking|custom-forms/,
+			testIgnore: /guest-booking|custom-forms|login-modal/,
 			use: {
 				...devices["Desktop Chrome"],
 				storageState: authFile,
