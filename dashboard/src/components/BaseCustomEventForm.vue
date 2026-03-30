@@ -1,5 +1,5 @@
 <template>
-	<div class="max-w-2xl mx-auto py-8 px-4">
+	<div>
 		<div class="w-8 mx-auto" v-if="formDataResource.loading">
 			<Spinner />
 		</div>
