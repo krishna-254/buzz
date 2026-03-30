@@ -21,8 +21,9 @@ class BuzzSettings(Document):
 		auto_send_pitch_deck: DF.Check
 		default_sponsor_deck_cc: DF.SmallText | None
 		default_sponsor_deck_email_template: DF.Link | None
-		default_sponsor_deck_reply_to: DF.Data
+		default_sponsor_deck_reply_to: DF.Data | None
 		default_ticket_email_template: DF.Link | None
+		login_banner: DF.MarkdownEditor | None
 		support_email: DF.Data | None
 	# end: auto-generated types
 
