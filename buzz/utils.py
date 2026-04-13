@@ -164,6 +164,10 @@ def generate_ics_file(event_doc, attendee_email: str):
 	from frappe.utils import now_datetime
 
 	start_dt, end_dt = build_event_datetimes(event_doc)
+	organizer_name = event_doc.host or event_doc.title
+	organizer_email = frappe.db.get_value(
+		"Email Account", {"default_outgoing": 1, "enable_outgoing": 1}, "email_id"
+	)
 
 	venue_address = ""
 	if event_doc.venue:
@@ -179,6 +183,8 @@ def generate_ics_file(event_doc, attendee_email: str):
 		"location": venue_address,
 		"attendee_email": attendee_email,
 		"description": f"Your ticket for {event_doc.title}",
+		"organizer_name": organizer_name,
+		"organizer_email": organizer_email,
 	}
 
 	return frappe.render_template("templates/ics/ics.jinja2", context, is_path=True)
